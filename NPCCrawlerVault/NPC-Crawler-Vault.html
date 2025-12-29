@@ -137,7 +137,6 @@ textarea{resize:vertical;min-height:70px}
     <button onclick="addNPC()">+ NPC</button>
     <button onclick="exportVault()">Export</button>
     <button onclick="importVault()">Import</button>
-    <button class="danger" onclick="resetAll()">Reset</button>
   </div>
 </header>
 
@@ -317,12 +316,6 @@ function deleteNPC(){
 }
 
 /* ===== UTIL ===== */
-function resetAll(){
-  if(confirm("Reset NPC Crawler Vault?")){
-    localStorage.removeItem(KEY);
-    location.reload();
-  }
-}
 function printAll(){ window.print() }
 function esc(s){
   return (s||"").replace(/[&<>"]/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;"}[m]));
@@ -334,3 +327,4 @@ renderEditor();
 
 </body>
 </html>
+
