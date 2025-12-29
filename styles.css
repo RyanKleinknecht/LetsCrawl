@@ -1,0 +1,103 @@
+/* ===== Base ===== */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: "Segoe UI", Tahoma, sans-serif;
+}
+
+body {
+  background: radial-gradient(circle at top, #0e1116, #050608);
+  color: #c9b26a; /* Base gold text */
+  min-height: 100vh;
+}
+
+/* ===== Landing Page ===== */
+body.landing {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+}
+
+.landing-content {
+  text-align: center;
+}
+
+.landing-content h1 {
+  font-size: 3.8rem;
+  letter-spacing: 6px;
+  margin-bottom: 20px;
+  color: #d4af37;
+  text-shadow:
+    0 0 6px rgba(212, 175, 55, 0.45),
+    0 0 20px rgba(212, 175, 55, 0.2);
+}
+
+.continue-text {
+  font-size: 1.2rem;
+  letter-spacing: 1px;
+  color: #bfa85c;
+}
+
+/* ===== Menu Page ===== */
+body.menu {
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.menu-title {
+  font-size: 3.2rem;
+  margin-bottom: 10px;
+  letter-spacing: 5px;
+  color: #d4af37;
+  text-shadow:
+    0 0 6px rgba(212, 175, 55, 0.45),
+    0 0 20px rgba(212, 175, 55, 0.2);
+}
+
+.menu-subtitle {
+  margin-bottom: 45px;
+  letter-spacing: 1px;
+  color: #bfa85c;
+}
+
+/* ===== Menu Grid ===== */
+.menu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 22px;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+/* ===== Vault Buttons ===== */
+.menu-button {
+  display: block;
+  padding: 26px;
+  background: linear-gradient(180deg, #0f141b, #0a0d12);
+  border: 1px solid #3a3320;
+  color: #d4af37; /* Gold text */
+  text-decoration: none;
+  font-size: 1.25rem;
+  letter-spacing: 1.5px;
+  transition: all 0.25s ease;
+}
+
+/* ===== Hover ===== */
+.menu-button:hover {
+  color: #ffdf7e;
+  border-color: #d4af37;
+  box-shadow:
+    0 0 14px rgba(212, 175, 55, 0.4),
+    inset 0 0 18px rgba(212, 175, 55, 0.1);
+  transform: translateY(-2px);
+}
+
+/* ===== Active ===== */
+.menu-button:active {
+  transform: translateY(0);
+  box-shadow:
+    0 0 6px rgba(212, 175, 55, 0.3),
+    inset 0 0 12px rgba(212, 175, 55, 0.15);
+}

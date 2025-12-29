@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Lets Crawl – NPC Vault</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+:root{
+  --bg:#000;
+  --panel:#0b0b0b;
+  --panel2:#111;
+  --ink:#f2f2f2;
+  --muted:#9a9a9a;
+  --gold:#d4af37;
+  --danger:#b84a4a;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;
+}
+
+/* ===== HEADER ===== */
+header{
+  padding:14px 20px;
+  background:#050505;
+  border-bottom:1px solid var(--gold);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+header h1{
+  margin:0;
+  font-size:18px;
+  color:var(--gold);
+}
+
+/* ===== CONTROLS ===== */
+button{
+  background:var(--panel2);
+  color:var(--ink);
+  border:1px solid var(--gold);
+  padding:6px 12px;
+  cursor:pointer;
+}
+button:hover{background:#1a1a1a}
+button.danger{border-color:var(--danger);color:var(--danger)}
+
+input, textarea{
+  width:100%;
+  background:#050505;
+  color:var(--ink);
+  border:1px solid var(--gold);
+  padding:6px;
+}
+textarea{resize:vertical;min-height:70px}
+
+/* ===== LAYOUT ===== */
+.main{
+  max-width:1300px;
+  margin:0 auto;
+  padding:14px;
+}
+.grid{
+  display:grid;
+  grid-template-columns:320px 1fr;
+  gap:12px;
+}
+
+/* ===== LIST ===== */
+.list{
+  border:1px solid var(--gold);
+  background:var(--panel);
+}
+.item{
+  padding:8px;
+  border-bottom:1px solid #222;
+  cursor:pointer;
+}
+.item:hover{background:#151515}
+.item.active{background:#1c1c1c}
+.hint{font-size:12px;color:var(--muted)}
+
+/* ===== SECTIONS ===== */
+.section{
+  border:1px solid var(--gold);
+  margin-bottom:10px;
+}
+.section-head{
+  background:#050505;
+  padding:6px;
+  color:var(--gold);
+}
+.section-body{padding:8px}
+
+/* ===== EDITOR ===== */
+.editor{
+  border:1px solid var(--gold);
+  background:var(--panel);
+  padding:10px;
+}
+.editor.empty{
+  color:var(--muted);
+  font-style:italic;
+}
+.editor-actions{
+  display:flex;
+  gap:8px;
+  justify-content:flex-end;
+  margin-top:10px;
+}
+
+/* ===== PRINT ===== */
+@media print{
+  header,button{display:none}
+  body{background:white;color:black}
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>NPC Vault</h1>
+  <div style="display:flex;gap:8px">
+    <button onclick="goBack()">Back</button>
+    <button onclick="addNPC()">+ NPC</button>
+    <button onclick="exportVault()">Export</button>
+    <button onclick="importVault()">Import</button>
+    <button class="danger" onclick="resetAll()">Reset</button>
+  </div>
+</header>
+
+<div class="main">
+<div class="grid">
+
+<!-- NPC LIST -->
+<div>
+  <div class="section">
+    <div class="section-head">NPCs</div>
+    <div id="npcList" class="list"></div>
+  </div>
+</div>
+
+<!-- EDITOR -->
+<div id="editor" class="editor empty">
+  Select an NPC to edit.
+</div>
+
+</div>
+</div>
+
+<input type="file" id="importFile" accept=".json" style="display:none">
+
+<script>
+/* ===== STORAGE KEY ===== */
+const KEY="LC_NPC_VAULT";
+
+let state=JSON.parse(localStorage.getItem(KEY))||{npcs:[]};
+let active=null;
+let snapshot=null;
+
+function save(){localStorage.setItem(KEY,JSON.stringify(state))}
+function $(i){return document.getElementById(i)}
+function uid(){return Math.random().toString(16).slice(2,8).toUpperCase()}
+
+/* ===== NAV ===== */
+function goBack(){ history.back(); }
+
+/* ===== EXPORT / IMPORT ===== */
+function exportVault(){
+  const data=JSON.stringify(state,null,2);
+  const blob=new Blob([data],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="npc-vault.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function importVault(){
+  $("importFile").click();
+}
+
+$("importFile").addEventListener("change",e=>{
+  const file=e.target.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const data=JSON.parse(reader.result);
+      if(!data.npcs || !Array.isArray(data.npcs)) throw "Invalid";
+      if(!confirm("Replace current NPC Vault with imported data?")) return;
+      state=data;
+      active=null;
+      save();
+      render();
+      renderEditor();
+    }catch{
+      alert("Invalid NPC Vault file.");
+    }
+  };
+  reader.readAsText(file);
+});
+
+/* ===== RENDER LIST ===== */
+function render(){
+  $("npcList").innerHTML = state.npcs.map(n=>`
+    <div class="item ${active===n?"active":""}" onclick="selectNPC('${n.id}')">
+      <b>${esc(n.name||"Unnamed")}</b><br>
+      <span class="hint">
+        Lvl ${n.level||"?"} ${esc(n.race||"")} ${esc(n.class||"")}<br>
+        Location: ${esc(n.location||"—")}
+      </span>
+    </div>
+  `).join("") || `<div class="hint">No NPCs</div>`;
+}
+
+/* ===== SELECT ===== */
+function selectNPC(id){
+  if(active && JSON.stringify(active)!==snapshot){
+    if(!confirm("Discard unsaved changes?")) return;
+  }
+  active=state.npcs.find(n=>n.id===id);
+  snapshot=JSON.stringify(active);
+  renderEditor();
+  render();
+}
+
+/* ===== ADD NPC ===== */
+function addNPC(){
+  const npc={
+    id:uid(),
+    name:"",
+    level:"",
+    race:"",
+    class:"",
+    location:"",
+    floor:"",
+    locationNotes:"",
+    notes:""
+  };
+  state.npcs.push(npc);
+  save();
+  selectNPC(npc.id);
+}
+
+/* ===== EDITOR ===== */
+function renderEditor(){
+  if(!active){
+    $("editor").className="editor empty";
+    $("editor").innerHTML="Select an NPC to edit.";
+    return;
+  }
+
+  $("editor").className="editor";
+  $("editor").innerHTML=`
+    <div class="section">
+      <div class="section-head">Identity</div>
+      <div class="section-body">
+        <input id="n_name" placeholder="Name" value="${esc(active.name)}">
+        <input id="n_level" placeholder="Level" value="${esc(active.level)}">
+        <input id="n_race" placeholder="Race" value="${esc(active.race)}">
+        <input id="n_class" placeholder="Class" value="${esc(active.class)}">
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">Location</div>
+      <div class="section-body">
+        <input id="n_location" placeholder="Room / Area" value="${esc(active.location)}">
+        <input id="n_floor" placeholder="Floor" value="${esc(active.floor)}">
+        <textarea id="n_locationNotes" placeholder="Location Notes">${esc(active.locationNotes)}</textarea>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">Notes</div>
+      <div class="section-body">
+        <textarea id="n_notes">${esc(active.notes)}</textarea>
+      </div>
+    </div>
+
+    <div class="editor-actions">
+      <button onclick="saveNPC()">Save</button>
+      <button class="danger" onclick="deleteNPC()">Delete</button>
+    </div>
+  `;
+}
+
+/* ===== SAVE / DELETE ===== */
+function saveNPC(){
+  active.name=$("n_name").value;
+  active.level=$("n_level").value;
+  active.race=$("n_race").value;
+  active.class=$("n_class").value;
+  active.location=$("n_location").value;
+  active.floor=$("n_floor").value;
+  active.locationNotes=$("n_locationNotes").value;
+  active.notes=$("n_notes").value;
+
+  snapshot=JSON.stringify(active);
+  save();
+  render();
+}
+
+function deleteNPC(){
+  if(!confirm("Delete NPC?"))return;
+  state.npcs=state.npcs.filter(n=>n!==active);
+  active=null;
+  save();
+  render();
+  renderEditor();
+}
+
+/* ===== UTIL ===== */
+function resetAll(){
+  if(confirm("Reset NPC Vault?")){
+    localStorage.removeItem(KEY);
+    location.reload();
+  }
+}
+function esc(s){
+  return (s||"").replace(/[&<>"]/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;"}[m]));
+}
+
+render();
+renderEditor();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Lets Crawl – Skill Vault</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+:root {
+  --bg:#0b0f14;
+  --panel:#141a22;
+  --border:#2a3342;
+  --text:#e6eaf0;
+  --accent:#c9a24d;
+  --danger:#a94b4b;
+  --input:#0a0e14;
+  --textarea:#090d13;
+}
+
+body {
+  margin:0;
+  font-family:Arial, Helvetica, sans-serif;
+  background:var(--bg);
+  color:var(--text);
+}
+
+header {
+  padding:16px;
+  text-align:center;
+  border-bottom:2px solid var(--border);
+}
+
+h1 {
+  margin:0;
+  color:var(--accent);
+}
+
+main { padding:16px; }
+
+button {
+  background:var(--panel);
+  color:var(--text);
+  border:1px solid var(--border);
+  padding:6px 10px;
+  cursor:pointer;
+  height:32px;
+}
+
+button:hover { border-color:var(--accent); }
+
+.controls {
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:12px;
+  flex-wrap:wrap;
+}
+
+.controls-left,
+.controls-right {
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.skill-card {
+  border:1px solid var(--border);
+  background:var(--panel);
+  margin-bottom:12px;
+  padding:12px;
+}
+
+.skill-header {
+  display:grid;
+  grid-template-columns:25% auto auto;
+  gap:12px;
+  align-items:center;
+}
+
+.skill-header input {
+  width:100%;
+}
+
+.total-field {
+  background:var(--input);
+  border:1px solid var(--border);
+  padding:6px;
+  height:32px;
+  display:flex;
+  align-items:center;
+  font-weight:bold;
+}
+
+.remove-btn {
+  background:#7a2f2f;
+  font-size:12px;
+  min-width:32px;
+}
+
+.remove-btn:hover { background:var(--danger); }
+
+.grid {
+  display:grid;
+  grid-template-columns:repeat(6,1fr);
+  gap:6px;
+  margin-top:10px;
+}
+
+.grid label {
+  font-size:12px;
+  opacity:.85;
+}
+
+input, textarea {
+  background:var(--input);
+  color:var(--text);
+  border:1px solid var(--border);
+  padding:6px;
+}
+
+textarea {
+  background:var(--textarea);
+  resize:vertical;
+}
+
+.expandable {
+  margin-top:10px;
+}
+
+.expandable summary {
+  cursor:pointer;
+  font-weight:bold;
+  color:var(--accent);
+}
+
+.expandable textarea {
+  width:100%;
+  min-height:70px;
+  margin-top:6px;
+}
+
+footer {
+  border-top:2px solid var(--border);
+  padding:12px;
+  text-align:center;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>Skill Vault</h1>
+</header>
+
+<main>
+
+  <div class="controls">
+    <div class="controls-left">
+      <button onclick="addSkill()">➕ Add Skill</button>
+    </div>
+
+    <div class="controls-right">
+      <button onclick="exportSkills()">⬇ Export</button>
+      <button onclick="triggerImport()">⬆ Import</button>
+      <button onclick="saveSkills()">💾 Save</button>
+      <button onclick="loadSkills()">📂 Load</button>
+      <button onclick="window.print()">🖨 Print</button>
+      <button onclick="goBack()">⬅ Back</button>
+      <button onclick="exitVault()">🚪 Exit</button>
+    </div>
+  </div>
+
+  <input type="file" id="importFile" accept=".json" hidden>
+
+  <div id="skills"></div>
+
+</main>
+
+<footer>
+  <small>Lets Crawl • Skill Vault</small>
+</footer>
+
+<script>
+let dirty = false;
+
+function addSkill(data = {}) {
+  dirty = true;
+
+  const card = document.createElement('div');
+  card.className = 'skill-card';
+
+  card.innerHTML = `
+    <div class="skill-header">
+      <input placeholder="Skill Name" value="${data.name || ''}">
+      <div class="total-field">Total: <span class="total-value">0</span></div>
+      <button class="remove-btn" onclick="removeSkill(this)">✖</button>
+    </div>
+
+    <div class="grid">
+      <label>Skill Level</label>
+      <label>Stat Bonus</label>
+      <label>Magic</label>
+      <label>Race</label>
+      <label>Class</label>
+      <label>Misc</label>
+
+      <input type="number" value="${data.level || 0}" oninput="calcTotal(this)">
+      <input type="number" value="${data.stat || 0}" oninput="calcTotal(this)">
+      <input type="number" value="${data.magic || 0}" oninput="calcTotal(this)">
+      <input type="number" value="${data.race || 0}" oninput="calcTotal(this)">
+      <input type="number" value="${data.class || 0}" oninput="calcTotal(this)">
+      <input type="number" value="${data.misc || 0}" oninput="calcTotal(this)">
+    </div>
+
+    <details class="expandable">
+      <summary>Effect</summary>
+      <textarea>${data.effect || ''}</textarea>
+    </details>
+
+    <details class="expandable">
+      <summary>AI Notes</summary>
+      <textarea>${data.ai || ''}</textarea>
+    </details>
+
+    <details class="expandable">
+      <summary>Description</summary>
+      <textarea>${data.desc || ''}</textarea>
+    </details>
+  `;
+
+  document.getElementById('skills').appendChild(card);
+  calcTotal(card.querySelector('.grid input'));
+}
+
+function removeSkill(btn) {
+  dirty = true;
+  btn.closest('.skill-card').remove();
+}
+
+function calcTotal(el) {
+  dirty = true;
+  const card = el.closest('.skill-card');
+  let total = 0;
+  card.querySelectorAll('.grid input')
+    .forEach(n => total += Number(n.value || 0));
+  card.querySelector('.total-value').textContent = total;
+}
+
+function getSkillData() {
+  const skills = [];
+  document.querySelectorAll('.skill-card').forEach(card => {
+    const f = card.querySelectorAll('input, textarea');
+    skills.push({
+      name:f[0].value,
+      level:f[1].value,
+      stat:f[2].value,
+      magic:f[3].value,
+      race:f[4].value,
+      class:f[5].value,
+      misc:f[6].value,
+      effect:f[7].value,
+      ai:f[8].value,
+      desc:f[9].value
+    });
+  });
+  return skills;
+}
+
+function saveSkills() {
+  localStorage.setItem('letsCrawlSkills', JSON.stringify(getSkillData()));
+  dirty = false;
+  alert('Skills saved.');
+}
+
+function loadSkills() {
+  document.getElementById('skills').innerHTML = '';
+  const data = JSON.parse(localStorage.getItem('letsCrawlSkills') || '[]');
+  data.forEach(s => addSkill(s));
+  dirty = false;
+}
+
+function exportSkills() {
+  const blob = new Blob(
+    [JSON.stringify(getSkillData(), null, 2)],
+    {type:'application/json'}
+  );
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'lets-crawl-skill-vault.json';
+  a.click();
+}
+
+function triggerImport() {
+  document.getElementById('importFile').click();
+}
+
+document.getElementById('importFile').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('skills').innerHTML = '';
+    JSON.parse(ev.target.result).forEach(s => addSkill(s));
+    dirty = false;
+  };
+  reader.readAsText(file);
+});
+
+function goBack() {
+  window.history.back();
+}
+
+function exitVault() {
+  if (dirty && confirm('Unsaved changes detected. Save first?')) {
+    saveSkills();
+  }
+  window.close();
+}
+</script>
+
+</body>
+</html>

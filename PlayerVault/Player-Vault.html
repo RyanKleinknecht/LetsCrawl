@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Player Vault</title>
+
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Segoe UI,system-ui,sans-serif;
+  background:#0c0c0c;
+  color:#e4dfcf
+}
+header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:12px 16px;
+  background:#0f0f0f;
+  border-bottom:1px solid #5a4620
+}
+header h1{margin:0;color:#d4af37}
+
+button{
+  background:#1a1a1a;
+  color:#d4af37;
+  border:1px solid #5a4620;
+  border-radius:4px;
+  padding:6px 10px;
+  font-size:.8em;
+  cursor:pointer
+}
+button:hover{background:#2a2a2a}
+.danger{border-color:#8b2e2e;color:#ffaaaa}
+
+.app{
+  display:grid;
+  grid-template-columns:260px 1fr;
+  height:calc(100vh - 54px)
+}
+.sidebar{
+  background:#0f0f0f;
+  border-right:1px solid #5a4620;
+  padding:8px;
+  overflow:auto
+}
+.player{
+  padding:6px 8px;
+  border-radius:4px;
+  cursor:pointer
+}
+.player:hover{background:#1a1a1a}
+.player.active{
+  background:#2a2a2a;
+  border-left:3px solid #d4af37
+}
+
+.editor{padding:16px;overflow:auto}
+
+input,textarea,select{
+  background:#0f0f0f;
+  color:#e4dfcf;
+  border:1px solid #5a4620;
+  border-radius:4px;
+  padding:6px;
+  font-size:.8em
+}
+textarea{min-height:60px}
+label{font-size:.7em;color:#aaa}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:8px
+}
+.field{display:flex;flex-direction:column}
+
+.section{margin-top:18px}
+.section h3{color:#d4af37}
+
+.entry{
+  background:#101010;
+  border-left:3px solid #5a4620;
+  padding:10px;
+  border-radius:6px;
+  margin-bottom:12px
+}
+
+.calc-headers,.calc-grid{
+  display:grid;
+  grid-template-columns:1.4fr .7fr .6fr .6fr .6fr .6fr .7fr auto;
+  gap:6px;
+  align-items:center
+}
+.calc-headers{
+  font-size:.7em;
+  color:#d4af37;
+  margin-bottom:4px
+}
+
+@media print{
+  header,.sidebar,button{display:none!important}
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>🎭 Player Vault</h1>
+  <div>
+    <button onclick="addPlayer()">➕ New</button>
+    <button onclick="importData()">🔼 Import</button>
+    <button onclick="exportData()">🔽 Export</button>
+  </div>
+</header>
+
+<div class="app">
+  <div class="sidebar" id="list"></div>
+  <div class="editor" id="editor">
+    <p style="opacity:.6">Click <b>New</b> to create a player.</p>
+  </div>
+</div>
+
+<input id="fileInput" type="file" hidden accept=".json">
+
+<script>
+let players = [];
+let active = null;
+
+const list = document.getElementById("list");
+const editor = document.getElementById("editor");
+const fileInput = document.getElementById("fileInput");
+
+/* ================= LIST ================= */
+function renderList(){
+  list.innerHTML = "<h3>Players</h3>";
+  players.forEach((p,i)=>{
+    const d = document.createElement("div");
+    d.className = "player" + (i===active ? " active" : "");
+    d.textContent = p.name || "Unnamed Player";
+    d.onclick = ()=>selectPlayer(i);
+    list.appendChild(d);
+  });
+}
+
+function selectPlayer(i){
+  active = i;
+  renderList();
+  renderEditor();
+}
+
+/* ================= PLAYERS ================= */
+function addPlayer(){
+  players.push({
+    name:"",
+    level:1,
+    STR:3,DEX:3,CON:3,INT:3,WIS:3,CHA:3,
+    abilities:[],
+    skills:[],
+    items:[],
+    achievements:[]
+  });
+  active = players.length - 1;
+  renderList();
+  renderEditor();
+}
+
+function deletePlayer(){
+  if(active === null) return;
+
+  const name = players[active].name || "this player";
+  if(!confirm(`Delete ${name}? This cannot be undone.`)) return;
+
+  players.splice(active,1);
+
+  if(players.length === 0){
+    active = null;
+    editor.innerHTML = "<p style='opacity:.6'>No players.</p>";
+  } else {
+    active = Math.max(0, active - 1);
+    renderEditor();
+  }
+
+  renderList();
+}
+
+/* ================= EDITOR ================= */
+function renderEditor(){
+  if(active === null) return;
+  const p = players[active];
+
+  editor.innerHTML = `
+    <div class="grid">
+      ${field("Name","name")}
+      ${field("Level","level")}
+    </div>
+
+    <div class="section">
+      <h3>Ability Scores</h3>
+      <div class="grid">
+        ${stat("STR")}${stat("DEX")}${stat("CON")}
+        ${stat("INT")}${stat("WIS")}${stat("CHA")}
+      </div>
+    </div>
+
+    ${calcSection("Abilities","abilities")}
+    ${calcSection("Skills","skills")}
+    ${itemSection()}
+    ${achievementSection()}
+
+    <div style="margin-top:20px">
+      <button class="danger" onclick="deletePlayer()">🗑 Delete Player</button>
+    </div>
+  `;
+}
+
+/* ================= FIELD HELPERS ================= */
+function field(label,key){
+  return `
+    <div class="field">
+      <label>${label}</label>
+      <input value="${players[active][key]}"
+        oninput="players[active]['${key}']=this.value;renderList()">
+    </div>`;
+}
+
+function stat(s){
+  return `
+    <div class="field">
+      <label>${s}</label>
+      <input value="${players[active][s]}"
+        oninput="players[active]['${s}']=this.value">
+    </div>`;
+}
+
+/* ================= ABILITIES & SKILLS ================= */
+function calcSection(title,key){
+  const btn = key==="abilities" ? "Add Ability" : "Add Skill";
+  return `
+    <div class="section">
+      <h3>${title}</h3>
+      ${players[active][key].map((_,i)=>calcRow(key,i)).join("")}
+      <button onclick="addCalc('${key}')">➕ ${btn}</button>
+    </div>`;
+}
+
+function calcRow(key,i){
+  const e = players[active][key][i];
+  return `
+    <div class="entry">
+      <div class="calc-headers">
+        <div>Name</div><div>Stat</div><div>Base</div><div>Level</div>
+        <div>Magic</div><div>Misc</div><div>Total</div><div></div>
+      </div>
+
+      <div class="calc-grid">
+        <input value="${e.name||""}"
+          oninput="players[active]['${key}'][${i}].name=this.value">
+
+        <select onchange="players[active]['${key}'][${i}].stat=this.value">
+          ${["STR","DEX","CON","INT","WIS","CHA"]
+            .map(s=>`<option ${e.stat===s?"selected":""}>${s}</option>`).join("")}
+        </select>
+
+        ${num(key,i,"base")}
+        ${num(key,i,"level")}
+        ${num(key,i,"magic")}
+        ${num(key,i,"misc")}
+
+        <input readonly value="${total(key,i)}">
+        <button onclick="removeCalc('${key}',${i})">✖</button>
+      </div>
+    </div>`;
+}
+
+function num(k,i,f){
+  const v = players[active][k][i][f] ?? 0;
+  return `<input value="${v}"
+    oninput="players[active]['${k}'][${i}]['${f}']=+this.value;
+             this.parentNode.children[6].value=total('${k}',${i})">`;
+}
+
+function total(k,i){
+  const e = players[active][k][i];
+  return (+e.base||0)+(+e.level||0)+(+e.magic||0)+(+e.misc||0);
+}
+
+function addCalc(k){
+  players[active][k].push({base:0,level:0,magic:0,misc:0});
+  renderEditor();
+}
+function removeCalc(k,i){
+  players[active][k].splice(i,1);
+  renderEditor();
+}
+
+/* ================= ITEMS ================= */
+function itemSection(){
+  return `
+    <div class="section"><h3>Items</h3>
+      ${players[active].items.map((_,i)=>`
+        <div class="entry">
+          <div class="field">
+            <label>Item</label>
+            <input oninput="players[active].items[${i}].name=this.value">
+          </div>
+          <div class="field">
+            <label>Quantity</label>
+            <input oninput="players[active].items[${i}].qty=this.value">
+          </div>
+          <div class="field">
+            <label>Effect</label>
+            <textarea oninput="players[active].items[${i}].effect=this.value"></textarea>
+          </div>
+          <button class="danger" onclick="removeItem(${i})">✖ Remove Item</button>
+        </div>`).join("")}
+      <button onclick="addItem()">➕ Add Item</button>
+    </div>`;
+}
+
+function addItem(){
+  players[active].items.push({});
+  renderEditor();
+}
+function removeItem(i){
+  players[active].items.splice(i,1);
+  renderEditor();
+}
+
+/* ================= ACHIEVEMENTS ================= */
+function achievementSection(){
+  return `
+    <div class="section"><h3>Achievements</h3>
+      ${players[active].achievements.map((_,i)=>`
+        <div class="entry">
+          <div class="field">
+            <label>Name</label>
+            <input oninput="players[active].achievements[${i}].name=this.value">
+          </div>
+          <div class="field">
+            <label>Effect</label>
+            <textarea oninput="players[active].achievements[${i}].effect=this.value"></textarea>
+          </div>
+          <button class="danger" onclick="removeAch(${i})">✖ Remove Achievement</button>
+        </div>`).join("")}
+      <button onclick="addAch()">➕ Add Achievement</button>
+    </div>`;
+}
+
+function addAch(){
+  players[active].achievements.push({});
+  renderEditor();
+}
+function removeAch(i){
+  players[active].achievements.splice(i,1);
+  renderEditor();
+}
+
+/* ================= IMPORT / EXPORT ================= */
+function exportData(){
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(
+    new Blob([JSON.stringify(players,null,2)],{type:"application/json"})
+  );
+  a.download = "player-vault.json";
+  a.click();
+}
+
+function importData(){
+  fileInput.click();
+}
+
+fileInput.onchange = e => {
+  const reader = new FileReader();
+  reader.onload = () => {
+    players = JSON.parse(reader.result);
+    active = null;
+    renderList();
+    editor.innerHTML = "<p style='opacity:.6'>Select a player.</p>";
+  };
+  reader.readAsText(e.target.files[0]);
+};
+</script>
+
+</body>
+</html>

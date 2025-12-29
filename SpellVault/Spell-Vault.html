@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Lets Crawl – Spell Vault</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+:root{
+  --bg:#0e1116; --panel:#161b22; --border:#2b313c;
+  --text:#e6edf3; --muted:#9da7b3;
+  --accent:#c9a24d; --danger:#c94d4d;
+}
+*{box-sizing:border-box}
+
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:system-ui,sans-serif;
+  height:100vh; display:flex; flex-direction:column;
+}
+
+header{
+  padding:14px; font-size:22px; font-weight:700;
+  text-align:center; border-bottom:1px solid var(--border);
+}
+
+main{
+  flex:1; display:grid;
+  grid-template-columns:260px 1fr;
+  overflow:hidden;
+}
+
+/* LEFT LIST */
+#spellList{
+  border-right:1px solid var(--border);
+  background:#0b0f14;
+  overflow-y:auto;
+}
+
+.left-toolbar{
+  padding:10px;
+  border-bottom:1px solid var(--border);
+  display:flex; gap:8px; flex-wrap:wrap;
+}
+
+.search{
+  width:100%;
+  background:#0b0f14;
+  border:1px solid var(--border);
+  color:var(--text);
+  padding:6px;
+  border-radius:6px;
+}
+
+.spell-item{
+  padding:10px;
+  border-bottom:1px solid var(--border);
+  cursor:pointer;
+}
+.spell-item:hover{background:#111722}
+.spell-item.active{
+  background:#161b22;
+  border-left:4px solid var(--accent);
+}
+
+/* RIGHT */
+#editor{ padding:16px; overflow-y:auto; }
+
+.controls{
+  display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap;
+}
+
+button{
+  background:var(--panel);
+  border:1px solid var(--border);
+  color:var(--text);
+  padding:7px 12px;
+  border-radius:6px;
+  cursor:pointer;
+}
+button:hover{border-color:var(--accent)}
+button.danger{border-color:var(--danger); color:var(--danger)}
+
+label{font-size:13px;color:var(--muted);display:block}
+input,textarea{
+  width:100%; background:#0b0f14;
+  border:1px solid var(--border);
+  color:var(--text); padding:6px;
+  border-radius:4px;
+}
+textarea{resize:vertical; min-height:70px}
+
+.grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px}
+.grid-4{display:grid; grid-template-columns:repeat(4,1fr); gap:10px}
+.grid-2{display:grid; grid-template-columns:repeat(2,1fr); gap:10px}
+.grid-full{grid-column:1/-1}
+
+.section-title{
+  margin-top:16px; font-weight:700; color:var(--accent)
+}
+
+/* LEVEL UP */
+.progress-header,.progress-row{
+  display:grid;
+  grid-template-columns:.7fr 2fr 2fr 1fr 1fr auto;
+  gap:8px; margin-top:6px;
+}
+.progress-header div{
+  text-align:left; justify-self:start;
+  color:var(--muted); font-weight:700;
+}
+.progress-row input:nth-child(1),
+.progress-row input:nth-child(4),
+.progress-row input:nth-child(5){
+  text-align:center;
+}
+
+footer{
+  text-align:center; padding:10px;
+  font-size:12px; color:var(--muted);
+}
+</style>
+</head>
+
+<body>
+
+<header>📜 Spell Vault</header>
+
+<main>
+  <!-- LEFT -->
+  <div id="spellList">
+    <div class="left-toolbar">
+      <input id="searchBox" class="search" placeholder="Search spells...">
+      <button onclick="newSpell()">➕ New</button>
+      <button class="danger" onclick="deleteSpell()">🗑 Delete</button>
+    </div>
+    <div id="spellItems"></div>
+  </div>
+
+  <!-- RIGHT -->
+  <div id="editor">
+    <div class="controls">
+      <button onclick="saveLocal()">💾 Save</button>
+      <button onclick="exportVault()">⬇ Export</button>
+      <button onclick="importVault()">⬆ Import</button>
+      <button onclick="goBack()">⬅ Back</button>
+      <input id="importFile" type="file" accept=".json" style="display:none">
+    </div>
+
+    <div id="spellEditor" style="color:var(--muted)">
+      Select or create a spell.
+    </div>
+  </div>
+</main>
+
+<footer>Lets Crawl • Spell Vault</footer>
+
+<script>
+let spells = [];
+let current = -1;
+let dirty = false;
+const STORAGE_KEY = "LetsCrawl_SpellVault_v1";
+
+const markDirty = () => dirty = true;
+
+function defaultSpell(){
+  return {
+    name:"", level:"", stat:"",
+    effect:"", range:"", aoe:"",
+    damage:"", duration:"",
+    cost:"", costType:"", upscale:"",
+    progress:[]
+  };
+}
+
+/* ===== LIST ===== */
+function renderList(){
+  const box = document.getElementById("spellItems");
+  box.innerHTML = "";
+  const q = (searchBox.value || "").toLowerCase();
+
+  spells.forEach((s,i)=>{
+    const name = s.name?.trim() || "Unnamed Spell";
+    if(q && !name.toLowerCase().includes(q)) return;
+
+    const d = document.createElement("div");
+    d.className = "spell-item" + (i===current?" active":"");
+    d.textContent = name;
+    d.onclick = ()=>openSpell(i);
+    box.appendChild(d);
+  });
+
+  if(!box.children.length){
+    box.innerHTML = `<div class="spell-item" style="color:var(--muted)">No spells found.</div>`;
+  }
+}
+searchBox.oninput = renderList;
+
+/* ===== EDITOR ===== */
+function openSpell(i){
+  current = i;
+  renderList();
+  renderEditor();
+}
+
+function renderEditor(){
+  const host = spellEditor;
+  host.innerHTML = "";
+  host.style.color = current===-1 ? "var(--muted)" : "var(--text)";
+  if(current===-1){ host.textContent="Select or create a spell."; return; }
+
+  const s = spells[current];
+  const bind=(id,key,cb)=>{
+    const el=document.getElementById(id);
+    el.value=s[key]||"";
+    el.oninput=()=>{s[key]=el.value;markDirty();cb&&cb();}
+  };
+
+  host.innerHTML = `
+    <div class="grid">
+      <div><label>Name</label><input id="n"></div>
+      <div><label>Level</label><input id="l"></div>
+      <div><label>Stat</label><input id="st"></div>
+    </div>
+
+    <div class="grid-full">
+      <label>Effect</label>
+      <textarea id="ef"></textarea>
+    </div>
+
+    <div class="grid-4">
+      <div><label>Range</label><input id="r"></div>
+      <div><label>Area of Effect</label><input id="a"></div>
+      <div><label>Damage</label><input id="d"></div>
+      <div><label>Duration</label><input id="du"></div>
+    </div>
+
+    <div class="grid-2">
+      <div><label>Cost</label><input id="c"></div>
+      <div><label>Cost Type</label><input id="ct"></div>
+    </div>
+
+    <div class="grid-2">
+      <div><label>Upscale Cost</label><input id="u"></div>
+    </div>
+  `;
+
+  bind("n","name",renderList);
+  bind("l","level");
+  bind("st","stat");
+  bind("ef","effect");
+  bind("r","range");
+  bind("a","aoe");
+  bind("d","damage");
+  bind("du","duration");
+  bind("c","cost");
+  bind("ct","costType");
+  bind("u","upscale");
+}
+
+/* ===== CRUD ===== */
+function newSpell(){
+  searchBox.value="";
+  spells.push(defaultSpell());
+  current=spells.length-1;
+  markDirty();
+  renderList();
+  renderEditor();
+}
+
+function deleteSpell(){
+  if(current===-1||!confirm("Delete this spell?"))return;
+  spells.splice(current,1);
+  current=-1;
+  markDirty();
+  renderList();
+  spellEditor.textContent="Select or create a spell.";
+}
+
+/* ===== SAVE / EXPORT / IMPORT ===== */
+function saveLocal(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(spells));
+  dirty=false;
+  alert("Saved locally");
+}
+
+function exportVault(){
+  const data={
+    app:"Lets Crawl Spell Vault",
+    version:"1.0",
+    exported:new Date().toISOString(),
+    spells
+  };
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="spell-vault.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function importVault(){
+  if(dirty&&!confirm("Importing will overwrite unsaved changes. Continue?"))return;
+  importFile.click();
+}
+importFile.onchange=e=>{
+  const f=e.target.files[0]; if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const d=JSON.parse(r.result);
+      if(!Array.isArray(d.spells))throw 0;
+      spells=d.spells; current=-1; dirty=false;
+      renderList();
+      spellEditor.textContent="Spell vault loaded.";
+      alert("Import successful");
+    }catch{alert("Invalid spell vault file");}
+  };
+  r.readAsText(f);
+  e.target.value="";
+};
+
+/* ===== BACK ===== */
+function goBack(){
+  if(dirty && !confirm("You have unsaved changes. Go back anyway?")) return;
+  history.back();   // ← replace with window.location = "index.html" if preferred
+}
+
+/* ===== INIT ===== */
+(function(){
+  const saved=localStorage.getItem(STORAGE_KEY);
+  if(saved) try{spells=JSON.parse(saved)}catch{}
+  renderList();
+})();
+</script>
+</body>
+</html>

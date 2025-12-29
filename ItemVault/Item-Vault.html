@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Lets Crawl – Item Vault</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="item-vault.css">
+</head>
+
+<body>
+
+<header class="vault-header">
+  <h1>Item Vault</h1>
+
+  <div class="vault-actions right">
+    <button id="addItem">+ Add Item</button>
+    <button id="saveVault">Save</button>
+    <button id="loadVault">Load</button>
+    <button id="exportVault">Export</button>
+    <button id="importVault">Import</button>
+    <button id="printVault">Print</button>
+    <button id="backVault">Back</button>
+  </div>
+</header>
+
+<input type="file" id="importFile" accept=".json" hidden>
+
+<main id="itemList"></main>
+
+<template id="itemTemplate">
+  <section class="vault-card">
+    <header class="card-header">
+      <span class="item-title">New Item</span>
+
+      <div class="card-controls">
+        <button class="moveUp" title="Move Up">▲</button>
+        <button class="moveDown" title="Move Down">▼</button>
+        <button class="deleteItem" title="Delete Item">Delete</button>
+      </div>
+    </header>
+
+    <div class="card-body">
+      <label>
+        Item Name
+        <input type="text" class="item-name">
+      </label>
+
+      <label>
+        Item Effect / Benefit
+        <textarea class="item-effect"></textarea>
+      </label>
+
+      <label>
+        Item AI Tag Line
+        <textarea class="item-tagline"></textarea>
+      </label>
+    </div>
+  </section>
+</template>
+
+<script src="item-vault.js"></script>
+</body>
+</html>

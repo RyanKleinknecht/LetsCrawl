@@ -1,0 +1,109 @@
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background-color: #111;
+  color: #ddd;
+}
+
+.vault-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #1b1b1b;
+  border-bottom: 1px solid #333;
+  padding: 10px;
+}
+
+.vault-header h1 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.vault-actions.right button {
+  margin-left: 6px;
+}
+
+.vault-actions button {
+  background-color: #2a2a2a;
+  border: 1px solid #444;
+  color: #ddd;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+.vault-actions button:hover {
+  background-color: #333;
+}
+
+#itemList {
+  padding: 10px;
+}
+
+.vault-card {
+  border: 1px solid #333;
+  background-color: #1a1a1a;
+  margin-bottom: 10px;
+}
+
+.card-header {
+  background-color: #202020;
+  padding: 6px 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.item-title {
+  font-weight: bold;
+}
+
+.card-controls button {
+  background: none;
+  border: none;
+  color: #aaa;
+  cursor: pointer;
+  margin-left: 6px;
+  font-size: 12px;
+}
+
+.card-controls button:hover {
+  color: #fff;
+}
+
+.card-controls .deleteItem {
+  color: #c66;
+}
+
+.card-controls .deleteItem:hover {
+  color: #ff8888;
+}
+
+.card-body {
+  display: none;
+  padding: 8px;
+}
+
+.vault-card.open .card-body {
+  display: block;
+}
+
+label {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+input,
+textarea {
+  width: 100%;
+  background-color: #111;
+  border: 1px solid #444;
+  color: #ddd;
+  padding: 5px;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 60px;
+}
