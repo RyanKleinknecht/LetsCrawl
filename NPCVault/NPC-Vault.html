@@ -131,7 +131,6 @@ textarea{resize:vertical;min-height:70px}
     <button onclick="addNPC()">+ NPC</button>
     <button onclick="exportVault()">Export</button>
     <button onclick="importVault()">Import</button>
-    <button class="danger" onclick="resetAll()">Reset</button>
   </div>
 </header>
 
@@ -157,7 +156,6 @@ textarea{resize:vertical;min-height:70px}
 <input type="file" id="importFile" accept=".json" style="display:none">
 
 <script>
-/* ===== STORAGE KEY ===== */
 const KEY="LC_NPC_VAULT";
 
 let state=JSON.parse(localStorage.getItem(KEY))||{npcs:[]};
@@ -318,12 +316,6 @@ function deleteNPC(){
 }
 
 /* ===== UTIL ===== */
-function resetAll(){
-  if(confirm("Reset NPC Vault?")){
-    localStorage.removeItem(KEY);
-    location.reload();
-  }
-}
 function esc(s){
   return (s||"").replace(/[&<>"]/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;"}[m]));
 }
